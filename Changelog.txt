@@ -1,0 +1,9 @@
+0.0.0.3
+	Initial release
+
+0.0.0.4 
+	Fixed buttons not hiding
+	Thanks to a suggestion form @OrbitalBear, updated window  titles to include mod name
+	Increased width of selection window
+	Made the selection text as buttons to make it easier to select
+	Fixed title of window to properly show plural contracts or non plural contract

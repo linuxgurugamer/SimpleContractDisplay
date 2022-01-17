@@ -34,7 +34,7 @@ namespace SimpleContractDisplay
         bool settingsVisible = false;
         int winId, selWinId;
 
-        public const float SEL_WINDOW_WIDTH = 400;
+        public const float SEL_WINDOW_WIDTH = 600;
         public const float SEL_WINDOW_HEIGHT = 200;
 
         internal const string MODID = "DisplayCurrentContract";
@@ -43,6 +43,7 @@ namespace SimpleContractDisplay
         Rect selWinPos = new Rect(Screen.width / 2 - SEL_WINDOW_WIDTH / 2, Screen.height / 2 - SEL_WINDOW_HEIGHT / 2, SEL_WINDOW_WIDTH, SEL_WINDOW_HEIGHT);
 
         int numDisplayedContracts = 0;
+        string contractText = "Contracts";
 
         bool resizingWindow = false;
 
@@ -184,21 +185,22 @@ namespace SimpleContractDisplay
                 if (!selectVisible)
                 {
                     if (Settings.Instance.enableClickThrough && !settingsVisible)
-                        tmpPos = GUILayout.Window(winId, Settings.Instance.winPos, ContractWindowDisplay, "Active Contract(s)", Settings.Instance.kspWindow);
+                        tmpPos = GUILayout.Window(winId, Settings.Instance.winPos, ContractWindowDisplay, "Simple Contract Display - Active " + contractText, Settings.Instance.kspWindow);
                     else
-                        tmpPos = ClickThruBlocker.GUILayoutWindow(winId, Settings.Instance.winPos, ContractWindowDisplay, "Active Contract(s) & Settings", Settings.Instance.kspWindow);
+                        tmpPos = ClickThruBlocker.GUILayoutWindow(winId, Settings.Instance.winPos, ContractWindowDisplay, "Simple Contract Display - Active "+contractText + " & Settings", Settings.Instance.kspWindow);
                     if (!Settings.Instance.lockPos)
                         Settings.Instance.winPos = tmpPos;
                 }
                 else
                 {
-                    selWinPos = ClickThruBlocker.GUILayoutWindow(selWinId, selWinPos, SelectContractWindowDisplay, "Contract Selection");
+                    selWinPos = ClickThruBlocker.GUILayoutWindow(selWinId, selWinPos, SelectContractWindowDisplay, "Simple Contract Display - Contract Selection");
                 }
             }
         }
 
         void ContractWindowDisplay(int id)
         {
+            numDisplayedContracts = 0;
 
             if (activeContracts != null)
             {
@@ -206,6 +208,7 @@ namespace SimpleContractDisplay
                 {
                     if (a.Value.selected)
                     {
+                        numDisplayedContracts++;
                         GUI.skin.textField = Settings.Instance.displayFont;
                         GUI.skin.textArea = Settings.Instance.textAreaFont;
 
@@ -216,8 +219,10 @@ namespace SimpleContractDisplay
                         // using (new GUILayout.HorizontalScope())
                         //     GUILayout.Label("Completed: " + currentContract.Completed);
                     }
-                }
+                }                
             }
+            contractText = (numDisplayedContracts != 1) ? "Contracts" : "Contract";
+
             if (settingsVisible)
             {
                 bool oBold = Settings.Instance.bold;
@@ -275,6 +280,7 @@ namespace SimpleContractDisplay
                 if (oFontSize != Settings.Instance.fontSize || oBold != Settings.Instance.bold)
                     SetFontSizes(Settings.Instance.fontSize, Settings.Instance.bold);
             }
+
             if (!Settings.Instance.hideButtons || settingsVisible || numDisplayedContracts == 0)
             {
                 using (new GUILayout.HorizontalScope())
@@ -420,7 +426,9 @@ namespace SimpleContractDisplay
                 {
                     using (new GUILayout.HorizontalScope())
                     {
-                        a.selected = GUILayout.Toggle(a.selected, a.contractContainer.Title);
+                        a.selected = GUILayout.Toggle(a.selected, "");
+                        if (GUILayout.Button(a.contractContainer.Title))
+                            a.selected = !a.selected;
                     }
                 }
                 GUILayout.EndScrollView();
@@ -441,7 +449,6 @@ namespace SimpleContractDisplay
                 return;
             bool exists = Directory.Exists(Path.GetDirectoryName(Settings.Instance.fileName)) || Path.GetDirectoryName(Settings.Instance.fileName) == "";
             StringBuilder str = new StringBuilder();
-            numDisplayedContracts = 0;
             if (exists)
             {
                 if (activeContracts != null)
@@ -450,7 +457,6 @@ namespace SimpleContractDisplay
                     {
                         if (a.Value.selected)
                         {
-                            numDisplayedContracts++;
                             str.AppendLine(a.Value.contractContainer.Title);
                             str.AppendLine(a.Value.contractContainer.Briefing);
                             str.AppendLine();
