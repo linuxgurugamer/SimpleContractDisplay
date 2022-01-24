@@ -12,9 +12,8 @@ namespace SimpleContractDisplay
         public const float WINDOW_HEIGHT = 100;
 
         public static Settings Instance;
-        internal GUIStyle displayFont, textAreaFont;
+        internal GUIStyle displayFont, textAreaFont, textAreaSmallFont;
         internal GUIStyle kspWindow;
-        internal float fontSize;
 
         internal GUIStyle myStyle;
         internal Texture2D styleOff;
@@ -25,15 +24,19 @@ namespace SimpleContractDisplay
 
         internal GUIStyle textFieldStyleRed;
         internal GUIStyle textFieldStyleNormal;
+        internal bool failToWrite = false;
 
         // Following are saved in a file
+        internal float fontSize = 12f;
         internal bool bold = false;
+        internal bool showBriefing = true;
         internal float Alpha = 255;
         internal bool lockPos = false;
         internal bool hideButtons = false;
         internal bool enableClickThrough = true;
+        internal bool showRequirements = false;
+        internal bool showNotes = false;
         internal string fileName = "";
-        internal bool failToWrite = false;
         internal bool saveToFile = false;
         internal Rect winPos = new Rect(Screen.width / 2 - WINDOW_WIDTH / 2, Screen.height / 2 - WINDOW_HEIGHT / 2, WINDOW_WIDTH, WINDOW_HEIGHT);
         internal Rect spaceCenterWinPos;
@@ -46,17 +49,33 @@ namespace SimpleContractDisplay
 
         static readonly string NODENAME = "DISPLAYINFO";
 
-
+        public void ResetWinPos()
+        {
+            if (HighLogic.LoadedScene != GameScenes.SPACECENTER)
+                spaceCenterWinPos = new Rect();
+            if (HighLogic.LoadedScene != GameScenes.EDITOR)
+                editorWinPos = new Rect();
+            if (HighLogic.LoadedScene != GameScenes.FLIGHT)
+                flightWinPos = new Rect();
+            if (HighLogic.LoadedScene != GameScenes.TRACKSTATION)
+                trackStationWinPos = new Rect();
+        }
         public void SaveData()
         {
             string fullPath = rootPath + CFG_FILE;
             var configFile = new ConfigNode();
             var configFileNode = new ConfigNode(NODENAME);
+            configFileNode.AddValue("fontSize", fontSize);
             configFileNode.AddValue("bold", bold);
+            configFileNode.AddValue("showBriefing", showBriefing);
             configFileNode.AddValue("Alpha", Alpha);
             configFileNode.AddValue("lockPos", lockPos);
             configFileNode.AddValue("hideButtons", hideButtons);
             configFileNode.AddValue("enableClickThrough", enableClickThrough);
+            configFileNode.AddValue("showRequirements", showRequirements);
+            configFileNode.AddValue("showNotes", showNotes);
+
+
             if (fileName != null)
                 configFileNode.AddValue("fileName", fileName);
             configFileNode.AddValue("saveToFile", saveToFile);
@@ -105,11 +124,17 @@ namespace SimpleContractDisplay
                     if (configFileNode != null)
                     {
                         Log.Info("configFileNode loaded");
+                        fontSize = configFileNode.SafeLoad("fontSize", fontSize);
                         bold = configFileNode.SafeLoad("bold", bold);
+                        showBriefing = configFileNode.SafeLoad("showBriefing", showBriefing);
                         Alpha = configFileNode.SafeLoad("Alpha", Alpha);
                         lockPos = configFileNode.SafeLoad("lockPos", lockPos);
                         hideButtons = configFileNode.SafeLoad("hideButtons", hideButtons);
                         enableClickThrough = configFileNode.SafeLoad("enableClickThrough", enableClickThrough);
+                        showRequirements = configFileNode.SafeLoad("showRequirements", showRequirements);
+                        showNotes = configFileNode.SafeLoad("showNotes", showNotes);
+
+
                         fileName = configFileNode.SafeLoad("fileName", fileName);
                         saveToFile = configFileNode.SafeLoad("saveToFile", saveToFile);
 

@@ -42,8 +42,7 @@ namespace SimpleContractDisplay
 
                 Settings.Instance.displayFont = new GUIStyle(HighLogic.Skin.textField);
                 Settings.Instance.textAreaFont = new GUIStyle(HighLogic.Skin.textArea);
-                Settings.Instance.fontSize = 12f;
-
+                Settings.Instance.textAreaSmallFont = new GUIStyle(HighLogic.Skin.textArea);
                 Settings.Instance.myStyle = new GUIStyle();
                 Settings.Instance.styleOff = new Texture2D(2, 2);
                 Settings.Instance.styleOn = new Texture2D(2, 2);

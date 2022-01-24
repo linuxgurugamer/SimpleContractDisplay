@@ -33,6 +33,7 @@ namespace SimpleContractDisplay
         bool selectVisible = false;
         bool settingsVisible = false;
         int winId, selWinId;
+        double quickHideEnd = 0;
 
         public const float SEL_WINDOW_WIDTH = 600;
         public const float SEL_WINDOW_HEIGHT = 200;
@@ -176,9 +177,11 @@ namespace SimpleContractDisplay
 
         public void OnGUI()
         {
-            Rect tmpPos;
-            if (HighLogic.LoadedSceneIsGame && !Hide && visible && Settings.Instance != null)
+
+            if (HighLogic.LoadedSceneIsGame && (HighLogic.CurrentGame.Mode == Game.Modes.CAREER || HighLogic.CurrentGame.Mode == Game.Modes.SCIENCE_SANDBOX) &&
+                !Hide && visible && Settings.Instance != null && Time.realtimeSinceStartup > quickHideEnd)
             {
+                Rect tmpPos;
                 GUI.skin = HighLogic.Skin;
                 SetAlpha(Settings.Instance.Alpha);
 
@@ -187,7 +190,7 @@ namespace SimpleContractDisplay
                     if (Settings.Instance.enableClickThrough && !settingsVisible)
                         tmpPos = GUILayout.Window(winId, Settings.Instance.winPos, ContractWindowDisplay, "Simple Contract Display - Active " + contractText, Settings.Instance.kspWindow);
                     else
-                        tmpPos = ClickThruBlocker.GUILayoutWindow(winId, Settings.Instance.winPos, ContractWindowDisplay, "Simple Contract Display - Active "+contractText + " & Settings", Settings.Instance.kspWindow);
+                        tmpPos = ClickThruBlocker.GUILayoutWindow(winId, Settings.Instance.winPos, ContractWindowDisplay, "Simple Contract Display - Active " + contractText + " & Settings", Settings.Instance.kspWindow);
                     if (!Settings.Instance.lockPos)
                         Settings.Instance.winPos = tmpPos;
                 }
@@ -198,28 +201,81 @@ namespace SimpleContractDisplay
             }
         }
 
+        Vector2 contractPos;
+        Dictionary<string, bool> openClosed = new Dictionary<string, bool>();
+
         void ContractWindowDisplay(int id)
         {
             numDisplayedContracts = 0;
 
             if (activeContracts != null)
             {
+                contractPos = GUILayout.BeginScrollView(contractPos, GUILayout.MaxHeight(Screen.height - 20));
                 foreach (var a in activeContracts)
                 {
+
                     if (a.Value.selected)
                     {
                         numDisplayedContracts++;
                         GUI.skin.textField = Settings.Instance.displayFont;
                         GUI.skin.textArea = Settings.Instance.textAreaFont;
+                        string contractId = a.Value.contractContainer.ID.ToString();
+                        bool requirementsOpen = false;
+                        if (!openClosed.TryGetValue(contractId, out requirementsOpen))
+                            openClosed.Add(contractId, requirementsOpen);
 
                         using (new GUILayout.HorizontalScope())
+                        {
+                            if (GUILayout.Button(requirementsOpen ? "-" : "+", GUILayout.Width(20)))
+                            {
+                                requirementsOpen = !requirementsOpen;
+                                openClosed[contractId] = requirementsOpen;
+                            }
                             GUILayout.TextField(a.Value.contractContainer.Title);
-                        using (new GUILayout.HorizontalScope())
-                            GUILayout.TextArea(a.Value.contractContainer.Briefing);
-                        // using (new GUILayout.HorizontalScope())
-                        //     GUILayout.Label("Completed: " + currentContract.Completed);
+                        }
+                        if (Settings.Instance.showBriefing)
+                        {
+                            using (new GUILayout.HorizontalScope())
+                            {
+                                GUILayout.Space(20);
+                                GUILayout.TextArea(a.Value.contractContainer.Briefing);
+                            }
+                        }
+                        if (!String.IsNullOrWhiteSpace(a.Value.contractContainer.Notes) && Settings.Instance.showNotes && requirementsOpen)
+                        {
+                            using (new GUILayout.HorizontalScope())
+                            {
+                                GUILayout.Space(40);
+                                GUILayout.TextArea("<color=#acfcff>" + a.Value.contractContainer.Notes + "</color>", Settings.Instance.textAreaSmallFont);
+                            }
+                        }
+                        int paramCnt = 0;
+                        if (requirementsOpen)
+                        {
+                            foreach (ContractParser.parameterContainer p in a.Value.contractContainer.ParamList)
+                            {
+                                paramCnt++;
+                                if (Settings.Instance.showRequirements)
+                                {
+                                    using (new GUILayout.HorizontalScope())
+                                    {
+                                        GUILayout.Space(40);
+                                        GUILayout.TextArea(p.Title);
+                                    }
+                                }
+                                if (!String.IsNullOrWhiteSpace(p.Notes()) && Settings.Instance.showNotes)
+                                {
+                                    using (new GUILayout.HorizontalScope())
+                                    {
+                                        GUILayout.Space(40);
+                                        GUILayout.TextArea("<color=#acfcff>" + p.Notes(true) + "</color>", Settings.Instance.textAreaSmallFont);
+                                    }
+                                }
+                            }
+                        }
                     }
-                }                
+                }
+                GUILayout.EndScrollView();
             }
             contractText = (numDisplayedContracts != 1) ? "Contracts" : "Contract";
 
@@ -231,10 +287,11 @@ namespace SimpleContractDisplay
                 using (new GUILayout.HorizontalScope())
                 {
                     // This stupidity is due to a bug in the KSP skin
+                    Settings.Instance.showBriefing = GUILayout.Toggle(Settings.Instance.showBriefing, "");
+                    GUILayout.Label("Display Briefing");
                     Settings.Instance.bold = GUILayout.Toggle(Settings.Instance.bold, "");
                     GUILayout.Label("Bold");
                     GUILayout.FlexibleSpace();
-                    // This stupidity is due to a bug in the KSP skin
                     Settings.Instance.lockPos = GUILayout.Toggle(Settings.Instance.lockPos, "");
                     GUILayout.Label("Lock Position");
                     Settings.Instance.hideButtons = GUILayout.Toggle(Settings.Instance.hideButtons, "");
@@ -244,6 +301,10 @@ namespace SimpleContractDisplay
                 {
                     Settings.Instance.enableClickThrough = GUILayout.Toggle(Settings.Instance.enableClickThrough, "");
                     GUILayout.Label("Allow click-through");
+                    Settings.Instance.showRequirements = GUILayout.Toggle(Settings.Instance.showRequirements, "");
+                    GUILayout.Label("Display Requirements");
+                    Settings.Instance.showNotes = GUILayout.Toggle(Settings.Instance.showNotes, "");
+                    GUILayout.Label("Display Notes");
                 }
                 using (new GUILayout.HorizontalScope())
                 {
@@ -253,7 +314,7 @@ namespace SimpleContractDisplay
                     {
                         bool exists = false;
                         if (Settings.Instance.fileName.Length > 0)
-                            exists = Directory.Exists(Path.GetDirectoryName(Settings.Instance.fileName)) || Path.GetDirectoryName(Settings.Instance.fileName)=="";
+                            exists = Directory.Exists(Path.GetDirectoryName(Settings.Instance.fileName)) || Path.GetDirectoryName(Settings.Instance.fileName) == "";
                         GUILayout.Space(20);
                         Settings.Instance.fileName = GUILayout.TextField(Settings.Instance.fileName,
                            exists ? Settings.Instance.textFieldStyleNormal : Settings.Instance.textFieldStyleRed,
@@ -324,15 +385,33 @@ namespace SimpleContractDisplay
             {
                 Settings.Instance.lockPos = !Settings.Instance.lockPos;
             }
+            if (GUI.Button(new Rect(40, 2, 16, 16), "R"))
+            {
+                Settings.Instance.showRequirements = !Settings.Instance.showRequirements;
+            }
+            if (GUI.Button(new Rect(58, 2, 16, 16), "N"))
+            {
+                Settings.Instance.showNotes = !Settings.Instance.showNotes;
+            }
+            if (GUI.Button(new Rect(76, 2, 16, 16), "S"))
+            {
+                settingsVisible = !settingsVisible;
+            }
 
             if (GUI.Button(new Rect(Settings.Instance.winPos.width - 18, 2, 16, 16), "X"))
             {
                 GUIToggle();
             }
-
-            if (GUI.RepeatButton(new Rect(Settings.Instance.winPos.width - 23f, Settings.Instance.winPos.height - 23f, 16, 16), "", Settings.Instance.resizeButton))
+            if (GUI.Button(new Rect(Settings.Instance.winPos.width - 36, 2, 16, 16), "H"))
             {
-                resizingWindow = true;
+                quickHideEnd = Time.realtimeSinceStartup + 15;
+            }
+            if (!Settings.Instance.lockPos)
+            {
+                if (GUI.RepeatButton(new Rect(Settings.Instance.winPos.width - 23f, Settings.Instance.winPos.height - 23f, 16, 16), "", Settings.Instance.resizeButton))
+                {
+                    resizingWindow = true;
+                }
             }
             resizeWindow();
             GUI.DragWindow();
@@ -360,13 +439,12 @@ namespace SimpleContractDisplay
             Settings.Instance.displayFont.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
             Settings.Instance.textAreaFont.fontSize = (int)fontSize;
             Settings.Instance.textAreaFont.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
-            //            ResetWinPos();
+
+            Settings.Instance.textAreaSmallFont.fontSize = (int)fontSize - 2;
+            Settings.Instance.textAreaSmallFont.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+            Settings.Instance.textAreaSmallFont.richText = true;
         }
 
-        //static void ResetWinPos()
-        //{
-        //    winPos = new Rect(winPos.x, winPos.y, WINDOW_WIDTH, WINDOW_HEIGHT);
-        //}
         internal static void SetAlpha(float Alpha)
         {
             GUIStyle workingWindow;
@@ -436,6 +514,7 @@ namespace SimpleContractDisplay
                 {
                     selectVisible = false;
                     WriteContractsToFile();
+                    Settings.Instance.ResetWinPos();
                 }
 
             }

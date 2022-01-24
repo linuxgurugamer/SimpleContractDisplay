@@ -7,3 +7,16 @@
 	Increased width of selection window
 	Made the selection text as buttons to make it easier to select
 	Fixed title of window to properly show plural contracts or non plural contract
+
+0.0.0.5
+	Added saving of font size
+	Added optional display of notes
+	Added optional display of Requirements
+	Added scrollview for displayed contracts
+	Added ability to hide briefing
+	Added expandable items
+	Hiding resize button when locked now
+	Added H button, to hide window for 15 seconds
+
+TODO
+	Need to look at text file storage
