@@ -18,5 +18,8 @@
 	Hiding resize button when locked now
 	Added H button, to hide window for 15 seconds
 
+0.0.0.6
+	Fixed leaking of font sizes into other areas of KSP and other mods
+
 TODO
 	Need to look at text file storage

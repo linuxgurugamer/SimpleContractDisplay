@@ -217,8 +217,7 @@ namespace SimpleContractDisplay
                     if (a.Value.selected)
                     {
                         numDisplayedContracts++;
-                        GUI.skin.textField = Settings.Instance.displayFont;
-                        GUI.skin.textArea = Settings.Instance.textAreaFont;
+
                         string contractId = a.Value.contractContainer.ID.ToString();
                         bool requirementsOpen = false;
                         if (!openClosed.TryGetValue(contractId, out requirementsOpen))
@@ -231,14 +230,14 @@ namespace SimpleContractDisplay
                                 requirementsOpen = !requirementsOpen;
                                 openClosed[contractId] = requirementsOpen;
                             }
-                            GUILayout.TextField(a.Value.contractContainer.Title);
+                            GUILayout.TextField(a.Value.contractContainer.Title, Settings.Instance.displayFont);
                         }
                         if (Settings.Instance.showBriefing)
                         {
                             using (new GUILayout.HorizontalScope())
                             {
                                 GUILayout.Space(20);
-                                GUILayout.TextArea(a.Value.contractContainer.Briefing);
+                                GUILayout.TextArea(a.Value.contractContainer.Briefing, Settings.Instance.textAreaFont);
                             }
                         }
                         if (!String.IsNullOrWhiteSpace(a.Value.contractContainer.Notes) && Settings.Instance.showNotes && requirementsOpen)
@@ -260,7 +259,7 @@ namespace SimpleContractDisplay
                                     using (new GUILayout.HorizontalScope())
                                     {
                                         GUILayout.Space(40);
-                                        GUILayout.TextArea(p.Title);
+                                        GUILayout.TextArea(p.Title, Settings.Instance.textAreaFont);
                                     }
                                 }
                                 if (!String.IsNullOrWhiteSpace(p.Notes()) && Settings.Instance.showNotes)
@@ -316,7 +315,7 @@ namespace SimpleContractDisplay
                         if (Settings.Instance.fileName.Length > 0)
                             exists = Directory.Exists(Path.GetDirectoryName(Settings.Instance.fileName)) || Path.GetDirectoryName(Settings.Instance.fileName) == "";
                         GUILayout.Space(20);
-                        Settings.Instance.fileName = GUILayout.TextField(Settings.Instance.fileName,
+                        Settings.Instance.fileName = GUILayout.TextField(Settings.Instance.fileName, 
                            exists ? Settings.Instance.textFieldStyleNormal : Settings.Instance.textFieldStyleRed,
                            GUILayout.MinWidth(60), GUILayout.ExpandWidth(true));
                     }
