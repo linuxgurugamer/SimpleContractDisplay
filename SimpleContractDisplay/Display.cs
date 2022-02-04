@@ -32,8 +32,11 @@ namespace SimpleContractDisplay
         bool visible = false;
         bool selectVisible = false;
         bool settingsVisible = false;
-        int winId, selWinId;
+        int winId, selWinId, manualContractWinId;
         double quickHideEnd = 0;
+        string manualContract = "";
+        string manualTitle = "";
+        bool displayManualContractEntry = false;
 
         public const float SEL_WINDOW_WIDTH = 600;
         public const float SEL_WINDOW_HEIGHT = 200;
@@ -42,26 +45,13 @@ namespace SimpleContractDisplay
         internal const string MODNAME = "Display Current Contract";
 
         Rect selWinPos = new Rect(Screen.width / 2 - SEL_WINDOW_WIDTH / 2, Screen.height / 2 - SEL_WINDOW_HEIGHT / 2, SEL_WINDOW_WIDTH, SEL_WINDOW_HEIGHT);
+        Rect manualContractWinPos = new Rect(Screen.width / 2 - SEL_WINDOW_WIDTH / 2, Screen.height / 2 - SEL_WINDOW_HEIGHT / 2, SEL_WINDOW_WIDTH, SEL_WINDOW_HEIGHT);
 
         int numDisplayedContracts = 0;
         string contractText = "Contracts";
 
         bool resizingWindow = false;
 
-        internal class Contract
-        {
-            internal bool selected;
-            internal bool active;
-            internal contractContainer contractContainer;
-
-            internal Contract(contractContainer cc)
-            {
-                selected = false;
-                active = true;
-                contractContainer = cc;
-            }
-        }
-        Dictionary<Guid, Contract> activeContracts;
         Vector2 scrollPos;
 
         public void Start()
@@ -70,7 +60,7 @@ namespace SimpleContractDisplay
             GameEvents.onShowUI.Add(OnShowUI);
             winId = WindowHelper.NextWindowId("SimpleContractDisplay");
             selWinId = WindowHelper.NextWindowId("CCD_Select");
-
+            manualContractWinId = WindowHelper.NextWindowId("ManualContractEntry");
             DontDestroyOnLoad(this);
 
             if (toolbarControl == null)
@@ -84,7 +74,7 @@ namespace SimpleContractDisplay
                      "SimpleContractDisplay/PluginData/textures/contract-24.png",
                     MODNAME);
             }
-            InvokeRepeating("Slowupdate", 5, 5);
+            InvokeRepeating("SlowUpdate", 5, 5);
             GameEvents.onGameSceneSwitchRequested.Add(onGameSceneSwitchRequested);
         }
 
@@ -134,36 +124,57 @@ namespace SimpleContractDisplay
                         Settings.Instance.winPos = new Rect(Settings.Instance.trackStationWinPos);
                     break;
             }
+            Settings.Instance.winPos.width = Math.Max(Settings.Instance.winPos.width, Settings.WINDOW_WIDTH);
+            if (HighLogic.CurrentGame != null)
+            {
+#if false
+                if (HighLogic.CurrentGame.Mode == Game.Modes.CAREER || HighLogic.CurrentGame.Mode == Game.Modes.SCIENCE_SANDBOX)
+                {
+                    toolbarControl.buttonActive = true;
+                    toolbarControl.Enabled = true;
+                }
+                else
+                {
+                    toolbarControl.buttonActive = false;
+                    toolbarControl.Enabled = false;
+                }
+#endif
+            }
         }
 
 
-        void Slowupdate()
+        void SlowUpdate()
         {
-            if (activeContracts == null)
+            if (Settings.Instance.activeContracts == null)
                 return;
-            foreach (var a in activeContracts)
+            foreach (var a in Settings.Instance.activeContracts)
                 a.Value.active = false;
             var aContracts = contractParser.getActiveContracts;
             int cnt = 0;
             foreach (var a in aContracts)
             {
-                if (activeContracts.ContainsKey(a.ID))
+                if (Settings.Instance.activeContracts.ContainsKey(a.ID))
                 {
-                    activeContracts[a.ID].active = true;
+                    Settings.Instance.activeContracts[a.ID].active = true;
                     cnt++;
                 }
 
             }
-            while (activeContracts.Count - cnt > 0)
+            while (Settings.Instance.activeContracts.Count - cnt > 0)
             {
-                foreach (var a in activeContracts)
+                foreach (var a in Settings.Instance.activeContracts)
                 {
-                    if (!a.Value.active)
-                    {
-                        Log.Info("Deleting from activeContracts: " + a.Value.contractContainer.ID);
-                        activeContracts.Remove(a.Value.contractContainer.ID);
+                    if (a.Value.manual)
                         cnt++;
-                        break;
+                    else
+                    {
+                        if (!a.Value.active)
+                        {
+                            Log.Info("Deleting from activeContracts: " + a.Key);
+                            Settings.Instance.activeContracts.Remove(a.Key);
+                            cnt++;
+                            break;
+                        }
                     }
                 }
             }
@@ -177,7 +188,6 @@ namespace SimpleContractDisplay
 
         public void OnGUI()
         {
-
             if (HighLogic.LoadedSceneIsGame && (HighLogic.CurrentGame.Mode == Game.Modes.CAREER || HighLogic.CurrentGame.Mode == Game.Modes.SCIENCE_SANDBOX) &&
                 !Hide && visible && Settings.Instance != null && Time.realtimeSinceStartup > quickHideEnd)
             {
@@ -185,18 +195,23 @@ namespace SimpleContractDisplay
                 GUI.skin = HighLogic.Skin;
                 SetAlpha(Settings.Instance.Alpha);
 
-                if (!selectVisible)
-                {
-                    if (Settings.Instance.enableClickThrough && !settingsVisible)
-                        tmpPos = GUILayout.Window(winId, Settings.Instance.winPos, ContractWindowDisplay, "Simple Contract Display - Active " + contractText, Settings.Instance.kspWindow);
-                    else
-                        tmpPos = ClickThruBlocker.GUILayoutWindow(winId, Settings.Instance.winPos, ContractWindowDisplay, "Simple Contract Display - Active " + contractText + " & Settings", Settings.Instance.kspWindow);
-                    if (!Settings.Instance.lockPos)
-                        Settings.Instance.winPos = tmpPos;
-                }
+                if (displayManualContractEntry)
+                    manualContractWinPos = ClickThruBlocker.GUILayoutWindow(manualContractWinId, manualContractWinPos, EnterManualContract, "Manual Contract Entry");
                 else
                 {
-                    selWinPos = ClickThruBlocker.GUILayoutWindow(selWinId, selWinPos, SelectContractWindowDisplay, "Simple Contract Display - Contract Selection");
+                    if (!selectVisible)
+                    {
+                        if (Settings.Instance.enableClickThrough && !settingsVisible)
+                            tmpPos = GUILayout.Window(winId, Settings.Instance.winPos, ContractWindowDisplay, "Simple Contract Display - Active " + contractText, Settings.Instance.kspWindow);
+                        else
+                            tmpPos = ClickThruBlocker.GUILayoutWindow(winId, Settings.Instance.winPos, ContractWindowDisplay, "Simple Contract Display - Active " + contractText + " & Settings", Settings.Instance.kspWindow);
+                        if (!Settings.Instance.lockPos)
+                            Settings.Instance.winPos = tmpPos;
+                    }
+                    else
+                    {
+                        selWinPos = ClickThruBlocker.GUILayoutWindow(selWinId, selWinPos, SelectContractWindowDisplay, "Simple Contract Display - Contract Selection");
+                    }
                 }
             }
         }
@@ -208,66 +223,78 @@ namespace SimpleContractDisplay
         {
             numDisplayedContracts = 0;
 
-            if (activeContracts != null)
+            if (Settings.Instance.activeContracts != null)
             {
-                contractPos = GUILayout.BeginScrollView(contractPos, GUILayout.MaxHeight(Screen.height - 20));
-                foreach (var a in activeContracts)
+                contractPos = GUILayout.BeginScrollView(contractPos, Settings.Instance.scrollViewStyle, GUILayout.MaxHeight(Screen.height - 20));
+                foreach (var contract in Settings.Instance.activeContracts)
                 {
 
-                    if (a.Value.selected)
+                    if (contract.Value.selected)
                     {
                         numDisplayedContracts++;
 
-                        string contractId = a.Value.contractContainer.ID.ToString();
+                        string contractId = contract.Key.ToString();
                         bool requirementsOpen = false;
-                        if (!openClosed.TryGetValue(contractId, out requirementsOpen))
-                            openClosed.Add(contractId, requirementsOpen);
-
+                        if (!contract.Value.manual)
+                        {
+                            if (!openClosed.TryGetValue(contractId, out requirementsOpen))
+                                openClosed.Add(contractId, requirementsOpen);
+                        }
                         using (new GUILayout.HorizontalScope())
                         {
-                            if (GUILayout.Button(requirementsOpen ? "-" : "+", GUILayout.Width(20)))
+                            if (!contract.Value.manual)
                             {
-                                requirementsOpen = !requirementsOpen;
-                                openClosed[contractId] = requirementsOpen;
+                                if (GUILayout.Button(requirementsOpen ? "-" : "+", GUILayout.Width(20)))
+                                {
+                                    requirementsOpen = !requirementsOpen;
+                                    openClosed[contractId] = requirementsOpen;
+                                }
                             }
-                            GUILayout.TextField(a.Value.contractContainer.Title, Settings.Instance.displayFont);
+                            else
+                                GUILayout.Space(22);
+                            GUILayout.TextField(contract.Value.manual ? contract.Value.manualTitle : contract.Value.contractContainer.Title, Settings.Instance.displayFont);
                         }
+
                         if (Settings.Instance.showBriefing)
                         {
                             using (new GUILayout.HorizontalScope())
                             {
                                 GUILayout.Space(20);
-                                GUILayout.TextArea(a.Value.contractContainer.Briefing, Settings.Instance.textAreaFont);
+                                GUILayout.TextArea(contract.Value.manual ? contract.Value.manualContract : contract.Value.contractContainer.Briefing, Settings.Instance.textAreaFont);
                             }
                         }
-                        if (!String.IsNullOrWhiteSpace(a.Value.contractContainer.Notes) && Settings.Instance.showNotes && requirementsOpen)
+                        if (!contract.Value.manual)
                         {
-                            using (new GUILayout.HorizontalScope())
+                            if (!String.IsNullOrWhiteSpace(contract.Value.contractContainer.Notes) && Settings.Instance.showNotes && requirementsOpen)
                             {
-                                GUILayout.Space(40);
-                                GUILayout.TextArea("<color=#acfcff>" + a.Value.contractContainer.Notes + "</color>", Settings.Instance.textAreaSmallFont);
-                            }
-                        }
-                        int paramCnt = 0;
-                        if (requirementsOpen)
-                        {
-                            foreach (ContractParser.parameterContainer p in a.Value.contractContainer.ParamList)
-                            {
-                                paramCnt++;
-                                if (Settings.Instance.showRequirements)
+                                using (new GUILayout.HorizontalScope())
                                 {
-                                    using (new GUILayout.HorizontalScope())
-                                    {
-                                        GUILayout.Space(40);
-                                        GUILayout.TextArea(p.Title, Settings.Instance.textAreaFont);
-                                    }
+                                    GUILayout.Space(40);
+                                    GUILayout.TextArea("<color=#acfcff>" + contract.Value.contractContainer.Notes + "</color>", Settings.Instance.textAreaSmallFont);
                                 }
-                                if (!String.IsNullOrWhiteSpace(p.Notes()) && Settings.Instance.showNotes)
+                            }
+
+                            int paramCnt = 0;
+                            if (requirementsOpen)
+                            {
+                                foreach (ContractParser.parameterContainer p in contract.Value.contractContainer.ParamList)
                                 {
-                                    using (new GUILayout.HorizontalScope())
+                                    paramCnt++;
+                                    if (Settings.Instance.showRequirements)
                                     {
-                                        GUILayout.Space(40);
-                                        GUILayout.TextArea("<color=#acfcff>" + p.Notes(true) + "</color>", Settings.Instance.textAreaSmallFont);
+                                        using (new GUILayout.HorizontalScope())
+                                        {
+                                            GUILayout.Space(40);
+                                            GUILayout.TextArea(p.Title, Settings.Instance.textAreaFont);
+                                        }
+                                    }
+                                    if (!String.IsNullOrWhiteSpace(p.Notes()) && Settings.Instance.showNotes)
+                                    {
+                                        using (new GUILayout.HorizontalScope())
+                                        {
+                                            GUILayout.Space(40);
+                                            GUILayout.TextArea("<color=#acfcff>" + p.Notes(true) + "</color>", Settings.Instance.textAreaSmallFont);
+                                        }
                                     }
                                 }
                             }
@@ -315,7 +342,7 @@ namespace SimpleContractDisplay
                         if (Settings.Instance.fileName.Length > 0)
                             exists = Directory.Exists(Path.GetDirectoryName(Settings.Instance.fileName)) || Path.GetDirectoryName(Settings.Instance.fileName) == "";
                         GUILayout.Space(20);
-                        Settings.Instance.fileName = GUILayout.TextField(Settings.Instance.fileName, 
+                        Settings.Instance.fileName = GUILayout.TextField(Settings.Instance.fileName,
                            exists ? Settings.Instance.textFieldStyleNormal : Settings.Instance.textFieldStyleRed,
                            GUILayout.MinWidth(60), GUILayout.ExpandWidth(true));
                     }
@@ -324,6 +351,9 @@ namespace SimpleContractDisplay
                 {
                     GUILayout.Label("Transparency:", GUILayout.Width(130));
                     Settings.Instance.Alpha = GUILayout.HorizontalSlider(Settings.Instance.Alpha, 0f, 255f, GUILayout.Width(130));
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label("Hide Time (" + Settings.Instance.HideTime.ToString("F0") + "s):");
+                    Settings.Instance.HideTime = GUILayout.HorizontalSlider(Settings.Instance.HideTime, 1f, 30, GUILayout.Width(130));
                     GUILayout.FlexibleSpace();
                 }
                 if (oAlpha != Settings.Instance.Alpha)
@@ -349,14 +379,14 @@ namespace SimpleContractDisplay
                     {
                         selectVisible = true;
 
-                        if (activeContracts == null)
-                            activeContracts = new Dictionary<Guid, Contract>();
+                        if (Settings.Instance.activeContracts == null)
+                            Settings.Instance.activeContracts = new Dictionary<Guid, Contract>();
 
                         var aContracts = contractParser.getActiveContracts;
                         foreach (var a in aContracts)
                         {
-                            if (!activeContracts.ContainsKey(a.ID))
-                                activeContracts.Add(a.ID, new Contract(a));
+                            if (!Settings.Instance.activeContracts.ContainsKey(a.ID))
+                                Settings.Instance.activeContracts.Add(a.ID, new Contract(a));
                         }
                     }
                     if (GUILayout.Button("Close"))
@@ -403,7 +433,7 @@ namespace SimpleContractDisplay
             }
             if (GUI.Button(new Rect(Settings.Instance.winPos.width - 36, 2, 16, 16), "H"))
             {
-                quickHideEnd = Time.realtimeSinceStartup + 15;
+                quickHideEnd = Time.realtimeSinceStartup + Settings.Instance.HideTime;
             }
             if (!Settings.Instance.lockPos)
             {
@@ -436,12 +466,18 @@ namespace SimpleContractDisplay
         {
             Settings.Instance.displayFont.fontSize = (int)fontSize;
             Settings.Instance.displayFont.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+            Settings.Instance.displayFont.normal.textColor = Color.yellow;
+
             Settings.Instance.textAreaFont.fontSize = (int)fontSize;
             Settings.Instance.textAreaFont.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
+            Settings.Instance.textAreaFont.normal.textColor = Color.white;
 
             Settings.Instance.textAreaSmallFont.fontSize = (int)fontSize - 2;
             Settings.Instance.textAreaSmallFont.fontStyle = bold ? FontStyle.Bold : FontStyle.Normal;
             Settings.Instance.textAreaSmallFont.richText = true;
+            Settings.Instance.textAreaSmallFont.normal.textColor = Color.white;
+
+
         }
 
         internal static void SetAlpha(float Alpha)
@@ -454,13 +490,18 @@ namespace SimpleContractDisplay
                 Settings.Instance.kspWindow.active.background = GUISkinCopy.CopyTexture2D(HighLogic.Skin.window.active.background);
             }
 
-            //if (useStockSkin)
             workingWindow = Settings.Instance.kspWindow;
-            // else
-            //     workingWindow = Settings.Instance.unityWindow;
 
+            SetAlphaFor(Alpha, workingWindow, HighLogic.Skin.window.active.background, workingWindow.active.textColor);
+            SetAlphaFor(Alpha, Settings.Instance.textAreaFont, HighLogic.Skin.textArea.normal.background, Settings.Instance.textAreaFont.normal.textColor);
+            SetAlphaFor(Alpha, Settings.Instance.textAreaSmallFont, HighLogic.Skin.textArea.normal.background, Settings.Instance.textAreaSmallFont.normal.textColor);
+            SetAlphaFor(Alpha, Settings.Instance.displayFont, HighLogic.Skin.textArea.normal.background, Settings.Instance.displayFont.normal.textColor);
+            SetAlphaFor(Alpha, Settings.Instance.scrollViewStyle, HighLogic.Skin.scrollView.normal.background, workingWindow.active.textColor);
+        }
 
-            Texture2D copyTexture = GUISkinCopy.CopyTexture2D(HighLogic.Skin.window.active.background);
+        static void SetAlphaFor(float Alpha, GUIStyle style, Texture2D backgroundTexture, Color color)
+        { 
+            Texture2D copyTexture = GUISkinCopy.CopyTexture2D(backgroundTexture);
 
             var pixels = copyTexture.GetPixels32();
             for (int i = 0; i < pixels.Length; ++i)
@@ -470,56 +511,116 @@ namespace SimpleContractDisplay
             copyTexture.SetPixels32(pixels);
             copyTexture.Apply();
 
-            workingWindow.active.background =
-                workingWindow.normal.background =
-                workingWindow.hover.background =
-                workingWindow.onNormal.background =
-                workingWindow.onHover.background =
-                workingWindow.onActive.background =
-                workingWindow.focused.background =
-                workingWindow.onFocused.background =
-                workingWindow.onNormal.background =
-                workingWindow.normal.background = copyTexture;
+            style.active.background =
+                style.normal.background =
+                style.hover.background =
+                style.onNormal.background =
+                style.onHover.background =
+                style.onActive.background =
+                style.focused.background =
+                style.onFocused.background =
+                style.onNormal.background =
+                style.normal.background = copyTexture;
 
-            workingWindow.active.textColor =
-                workingWindow.normal.textColor =
-                workingWindow.hover.textColor =
-                workingWindow.onNormal.textColor =
-                workingWindow.onHover.textColor =
-                workingWindow.onActive.textColor =
-                workingWindow.focused.textColor =
-                workingWindow.onFocused.textColor =
-                workingWindow.onNormal.textColor =
-                workingWindow.normal.textColor = workingWindow.active.textColor;
+            style.active.textColor =
+                style.normal.textColor =
+                style.hover.textColor =
+                style.onNormal.textColor =
+                style.onHover.textColor =
+                style.onActive.textColor =
+                style.focused.textColor =
+                style.onFocused.textColor =
+                style.onNormal.textColor =
+                style.normal.textColor = color;
         }
 
 
         void SelectContractWindowDisplay(int id)
         {
+            Guid? keyToRemove = null;
             using (new GUILayout.VerticalScope())
-            {
-                scrollPos = GUILayout.BeginScrollView(scrollPos);
-                foreach (var a in activeContracts.Values)
+            {                
+                scrollPos = GUILayout.BeginScrollView(scrollPos, Settings.Instance.scrollViewStyle);
+                foreach (var a in Settings.Instance.activeContracts)
                 {
                     using (new GUILayout.HorizontalScope())
                     {
-                        a.selected = GUILayout.Toggle(a.selected, "");
-                        if (GUILayout.Button(a.contractContainer.Title))
-                            a.selected = !a.selected;
+                        a.Value.selected = GUILayout.Toggle(a.Value.selected, "");
+
+                        if (GUILayout.Button(a.Value.manual ? a.Value.manualTitle : a.Value.contractContainer.Title))
+                            a.Value.selected = !a.Value.selected;
+                        if (a.Value.manual)
+                        {
+                            if (GUILayout.Button("Delete", GUILayout.Width(60)))
+                                keyToRemove = a.Key;
+                        }
                     }
                 }
                 GUILayout.EndScrollView();
-                if (GUILayout.Button("Accept"))
+                using (new GUILayout.HorizontalScope())
                 {
-                    selectVisible = false;
-                    WriteContractsToFile();
-                    Settings.Instance.ResetWinPos();
+                    if (GUILayout.Button("Accept"))
+                    {
+                        selectVisible = false;
+                        WriteContractsToFile();
+                        Settings.Instance.ResetWinPos();
+                    }
+                    if (GUILayout.Button("Manual Contract Entry", GUILayout.Width(180)))
+                        displayManualContractEntry = true;
+                }
+            }
+            if (keyToRemove != null)
+                Settings.Instance.activeContracts.Remove((Guid)keyToRemove);
+            GUI.DragWindow();
+        }
+
+
+        Vector2 contractScroll;
+        void EnterManualContract(int id)
+        {
+            using (new GUILayout.VerticalScope())
+            {
+                using (new GUILayout.HorizontalScope())
+                {
+                    GUILayout.Label("Title:");
+                    manualTitle = GUILayout.TextField(manualTitle);
+                }
+                using (new GUILayout.VerticalScope())
+                {
+                    GUILayout.Label("Descr:");
+                    contractScroll = GUILayout.BeginScrollView(contractScroll, Settings.Instance.scrollViewStyle,  GUILayout.MinHeight(100), GUILayout.MaxHeight(300));
+                    manualContract = GUILayout.TextArea(manualContract, Settings.Instance.textAreaWordWrap, GUILayout.ExpandHeight(true));
+                    GUILayout.EndScrollView();
+                }
+
+                using (new GUILayout.HorizontalScope())
+                {
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button("Clear", GUILayout.Width(90)))
+                    {
+                        manualTitle = "";
+                        manualContract = "";
+                    }
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button("Save & Close", GUILayout.Width(120)))
+                    {
+                        displayManualContractEntry = false;
+                        if (manualContract != "")
+                            Settings.Instance.activeContracts.Add( Guid.NewGuid(), new Contract(manualTitle, manualContract));
+                        manualTitle = "";
+                        manualContract = "";
+                    }
+                    GUILayout.FlexibleSpace();
+                    if (GUILayout.Button("Close without Save", GUILayout.Width(150)))
+                    {
+                        displayManualContractEntry = false;
+                    }
+                    GUILayout.FlexibleSpace();
                 }
 
             }
             GUI.DragWindow();
         }
-
 
         void WriteContractsToFile()
         {
@@ -529,14 +630,14 @@ namespace SimpleContractDisplay
             StringBuilder str = new StringBuilder();
             if (exists)
             {
-                if (activeContracts != null)
+                if (Settings.Instance.activeContracts != null)
                 {
-                    foreach (var a in activeContracts)
+                    foreach (var a in Settings.Instance.activeContracts)
                     {
                         if (a.Value.selected)
                         {
-                            str.AppendLine(a.Value.contractContainer.Title);
-                            str.AppendLine(a.Value.contractContainer.Briefing);
+                            str.AppendLine(a.Value.manual ? a.Value.manualTitle : a.Value.contractContainer.Title);
+                            str.AppendLine(a.Value.manual ? a.Value.manualContract : a.Value.contractContainer.Briefing);
                             str.AppendLine();
                         }
                     }

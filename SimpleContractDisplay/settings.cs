@@ -1,29 +1,35 @@
-﻿using UnityEngine;
+﻿using System;
 using System.IO;
-using ToolbarControl_NS;
+using System.Collections.Generic;
+
+using UnityEngine;
 using SpaceTuxUtility;
 using static SimpleContractDisplay.RegisterToolbar;
+
+using ContractParser;
 
 namespace SimpleContractDisplay
 {
     public class Settings
     {
-        public const float WINDOW_WIDTH = 400;
+        public const float WINDOW_WIDTH = 500;
         public const float WINDOW_HEIGHT = 100;
 
         public static Settings Instance;
-        internal GUIStyle displayFont, textAreaFont, textAreaSmallFont;
+        internal GUIStyle displayFont, textAreaFont, textAreaSmallFont, labelFont;
         internal GUIStyle kspWindow;
 
         internal GUIStyle myStyle;
         internal Texture2D styleOff;
         internal Texture2D styleOn;
         internal GUIStyle resizeButton;
+        internal GUIStyle scrollViewStyle;
 
         internal string rootPath;
 
         internal GUIStyle textFieldStyleRed;
         internal GUIStyle textFieldStyleNormal;
+        internal GUIStyle textAreaWordWrap;
         internal bool failToWrite = false;
 
         // Following are saved in a file
@@ -31,6 +37,7 @@ namespace SimpleContractDisplay
         internal bool bold = false;
         internal bool showBriefing = true;
         internal float Alpha = 255;
+        internal float HideTime = 15;
         internal bool lockPos = false;
         internal bool hideButtons = false;
         internal bool enableClickThrough = true;
@@ -44,10 +51,19 @@ namespace SimpleContractDisplay
         internal Rect flightWinPos;
         internal Rect trackStationWinPos;
 
+        internal Dictionary<Guid, Contract> activeContracts;
+
         internal static readonly string CFG_PATH = "/GameData/SimpleContractDisplay/PluginData/";
         static readonly string CFG_FILE = CFG_PATH + "displayInfo.cfg";
 
-        static readonly string NODENAME = "DISPLAYINFO";
+        internal static readonly string DISPLAYINFO_NODENAME = "DISPLAYINFO";
+        internal static readonly string CONTRACT_NODENAME = "CONTRACT";
+
+        public Settings()
+        {
+            Instance = this;
+            activeContracts = new Dictionary<Guid, Contract>();
+        }
 
         public void ResetWinPos()
         {
@@ -64,11 +80,12 @@ namespace SimpleContractDisplay
         {
             string fullPath = rootPath + CFG_FILE;
             var configFile = new ConfigNode();
-            var configFileNode = new ConfigNode(NODENAME);
+            var configFileNode = new ConfigNode(DISPLAYINFO_NODENAME);
             configFileNode.AddValue("fontSize", fontSize);
             configFileNode.AddValue("bold", bold);
             configFileNode.AddValue("showBriefing", showBriefing);
             configFileNode.AddValue("Alpha", Alpha);
+            configFileNode.AddValue("HideTime", HideTime);
             configFileNode.AddValue("lockPos", lockPos);
             configFileNode.AddValue("hideButtons", hideButtons);
             configFileNode.AddValue("enableClickThrough", enableClickThrough);
@@ -106,6 +123,8 @@ namespace SimpleContractDisplay
             configFileNode.AddValue("height", trackStationWinPos.height);
 
             configFile.AddNode(configFileNode);
+
+
             configFile.Save(fullPath);
         }
 
@@ -120,7 +139,7 @@ namespace SimpleContractDisplay
                 if (configFile != null)
                 {
                     Log.Info("configFile loaded");
-                    var configFileNode = configFile.GetNode(NODENAME);
+                    var configFileNode = configFile.GetNode(DISPLAYINFO_NODENAME);
                     if (configFileNode != null)
                     {
                         Log.Info("configFileNode loaded");
@@ -128,6 +147,7 @@ namespace SimpleContractDisplay
                         bold = configFileNode.SafeLoad("bold", bold);
                         showBriefing = configFileNode.SafeLoad("showBriefing", showBriefing);
                         Alpha = configFileNode.SafeLoad("Alpha", Alpha);
+                        HideTime = configFileNode.SafeLoad("HideTime", HideTime);
                         lockPos = configFileNode.SafeLoad("lockPos", lockPos);
                         hideButtons = configFileNode.SafeLoad("hideButtons", hideButtons);
                         enableClickThrough = configFileNode.SafeLoad("enableClickThrough", enableClickThrough);

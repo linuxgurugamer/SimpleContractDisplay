@@ -41,8 +41,15 @@ namespace SimpleContractDisplay
                 initted = true;
 
                 Settings.Instance.displayFont = new GUIStyle(HighLogic.Skin.textField);
+                Settings.Instance.displayFont.normal.textColor = Color.yellow;
+                Settings.Instance.labelFont = new GUIStyle(HighLogic.Skin.label);
+
                 Settings.Instance.textAreaFont = new GUIStyle(HighLogic.Skin.textArea);
                 Settings.Instance.textAreaSmallFont = new GUIStyle(HighLogic.Skin.textArea);
+
+                Settings.Instance.textAreaWordWrap = new GUIStyle(HighLogic.Skin.textArea);
+                Settings.Instance.textAreaWordWrap.wordWrap = true;
+
                 Settings.Instance.myStyle = new GUIStyle();
                 Settings.Instance.styleOff = new Texture2D(2, 2);
                 Settings.Instance.styleOn = new Texture2D(2, 2);
@@ -62,7 +69,7 @@ namespace SimpleContractDisplay
                 {
                     alignment = TextAnchor.MiddleLeft,
                 };
-
+                Settings.Instance.scrollViewStyle = new GUIStyle(HighLogic.Skin.scrollView);
 
                 Display.SetFontSizes(Settings.Instance.fontSize, Settings.Instance.bold);
                 Display.SetAlpha(Settings.Instance.Alpha);
