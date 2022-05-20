@@ -216,6 +216,30 @@ namespace SimpleContractDisplay
             }
         }
 
+
+        void RecurseParameterContainer(float indent, parameterContainer p)
+        {
+            for (int i2 = 0; i2 < p.ParamList.Count; i2++)
+            {
+                parameterContainer p1 = p.ParamList[i2];
+                if (!String.IsNullOrWhiteSpace(p1.Title))
+                    using (new GUILayout.HorizontalScope())
+                    {
+                        GUILayout.Space(indent);
+                        GUILayout.TextArea("<color=#acfcff>" + p1.Title + "</color>", Settings.Instance.textAreaSmallFont);
+                    }
+                if (!String.IsNullOrWhiteSpace(p.CParam.Notes))
+                    using (new GUILayout.HorizontalScope())
+                    {
+                        GUILayout.Space(indent);
+                        GUILayout.TextArea("<color=#acfcff>" + p1.CParam.Notes + "</color>", Settings.Instance.textAreaSmallFont);
+                    }
+
+                for (int i3 = 0; i3 < p.ParamList.Count; i3++)
+                    RecurseParameterContainer(indent + 10, p.ParamList[i3]);
+            }
+        }
+
         Vector2 contractPos;
         Dictionary<string, bool> openClosed = new Dictionary<string, bool>();
 
@@ -228,7 +252,6 @@ namespace SimpleContractDisplay
                 contractPos = GUILayout.BeginScrollView(contractPos, Settings.Instance.scrollViewStyle, GUILayout.MaxHeight(Screen.height - 20));
                 foreach (var contract in Settings.Instance.activeContracts)
                 {
-
                     if (contract.Value.selected)
                     {
                         numDisplayedContracts++;
@@ -265,20 +288,25 @@ namespace SimpleContractDisplay
                         }
                         if (!contract.Value.manual)
                         {
-                            if (!String.IsNullOrWhiteSpace(contract.Value.contractContainer.Notes) && Settings.Instance.showNotes && requirementsOpen)
+                            if (requirementsOpen)
                             {
-                                using (new GUILayout.HorizontalScope())
+                                if (!String.IsNullOrWhiteSpace(contract.Value.contractContainer.Notes) && Settings.Instance.showNotes)
                                 {
-                                    GUILayout.Space(40);
-                                    GUILayout.TextArea("<color=#acfcff>" + contract.Value.contractContainer.Notes + "</color>", Settings.Instance.textAreaSmallFont);
+                                    using (new GUILayout.HorizontalScope())
+                                    {
+                                        GUILayout.Space(40);
+                                        GUILayout.TextArea("<color=#acfcff>" + contract.Value.contractContainer.Notes + "</color>", Settings.Instance.textAreaSmallFont);
+                                    }
                                 }
-                            }
 
+                            }
                             int paramCnt = 0;
                             if (requirementsOpen)
                             {
-                                foreach (ContractParser.parameterContainer p in contract.Value.contractContainer.ParamList)
+                                for (int i1 = 0; i1 < contract.Value.contractContainer.ParamList.Count; i1++)
                                 {
+                                    parameterContainer p = contract.Value.contractContainer.ParamList[i1];
+
                                     paramCnt++;
                                     if (Settings.Instance.showRequirements)
                                     {
@@ -288,13 +316,23 @@ namespace SimpleContractDisplay
                                             GUILayout.TextArea(p.Title, Settings.Instance.textAreaFont);
                                         }
                                     }
-                                    if (!String.IsNullOrWhiteSpace(p.Notes()) && Settings.Instance.showNotes)
+                                    if (Settings.Instance.showNotes)
                                     {
-                                        using (new GUILayout.HorizontalScope())
+                                        if (!String.IsNullOrWhiteSpace(p.Notes()))
                                         {
-                                            GUILayout.Space(40);
-                                            GUILayout.TextArea("<color=#acfcff>" + p.Notes(true) + "</color>", Settings.Instance.textAreaSmallFont);
+                                            using (new GUILayout.HorizontalScope())
+                                            {
+                                                GUILayout.Space(40);
+                                                GUILayout.TextArea("<color=#acfcff>" + p.Notes(true) + "</color>", Settings.Instance.textAreaSmallFont);
+                                            }
                                         }
+                                        if (!String.IsNullOrWhiteSpace(p.CParam.Notes))
+                                            using (new GUILayout.HorizontalScope())
+                                            {
+                                                GUILayout.Space(60);
+                                                GUILayout.TextArea("<color=#acfcff>" + p.CParam.Notes + "</color>", Settings.Instance.textAreaSmallFont);
+                                            }
+                                        RecurseParameterContainer(60, p);
                                     }
                                 }
                             }
@@ -500,7 +538,7 @@ namespace SimpleContractDisplay
         }
 
         static void SetAlphaFor(float Alpha, GUIStyle style, Texture2D backgroundTexture, Color color)
-        { 
+        {
             Texture2D copyTexture = GUISkinCopy.CopyTexture2D(backgroundTexture);
 
             var pixels = copyTexture.GetPixels32();
@@ -539,7 +577,7 @@ namespace SimpleContractDisplay
         {
             Guid? keyToRemove = null;
             using (new GUILayout.VerticalScope())
-            {                
+            {
                 scrollPos = GUILayout.BeginScrollView(scrollPos, Settings.Instance.scrollViewStyle);
                 foreach (var a in Settings.Instance.activeContracts)
                 {
@@ -588,7 +626,7 @@ namespace SimpleContractDisplay
                 using (new GUILayout.VerticalScope())
                 {
                     GUILayout.Label("Descr:");
-                    contractScroll = GUILayout.BeginScrollView(contractScroll, Settings.Instance.scrollViewStyle,  GUILayout.MinHeight(100), GUILayout.MaxHeight(300));
+                    contractScroll = GUILayout.BeginScrollView(contractScroll, Settings.Instance.scrollViewStyle, GUILayout.MinHeight(100), GUILayout.MaxHeight(300));
                     manualContract = GUILayout.TextArea(manualContract, Settings.Instance.textAreaWordWrap, GUILayout.ExpandHeight(true));
                     GUILayout.EndScrollView();
                 }
@@ -606,7 +644,7 @@ namespace SimpleContractDisplay
                     {
                         displayManualContractEntry = false;
                         if (manualContract != "")
-                            Settings.Instance.activeContracts.Add( Guid.NewGuid(), new Contract(manualTitle, manualContract));
+                            Settings.Instance.activeContracts.Add(Guid.NewGuid(), new Contract(manualTitle, manualContract));
                         manualTitle = "";
                         manualContract = "";
                     }
@@ -645,7 +683,7 @@ namespace SimpleContractDisplay
                     {
                         File.WriteAllText(Settings.Instance.fileName, str.ToString());
                     }
-                    catch (Exception ex)
+                    catch //(Exception ex)
                     {
                         if (!Settings.Instance.failToWrite)
                             ScreenMessages.PostScreenMessage("Unable to write contracts to file: " + Settings.Instance.fileName, 10f);

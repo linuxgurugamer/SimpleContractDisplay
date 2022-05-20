@@ -30,6 +30,9 @@
 	Fixed alpha background for all display field
 	Added slider for adjustable hide time
 
+0.0.1
+	Added display of additional contract parameters
+
 TODO
 	Need to look at text file storage
 	Add tooltips for the buttons on top
