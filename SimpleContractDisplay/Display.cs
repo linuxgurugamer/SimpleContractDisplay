@@ -310,10 +310,13 @@ namespace SimpleContractDisplay
                                     paramCnt++;
                                     if (Settings.Instance.showRequirements)
                                     {
-                                        using (new GUILayout.HorizontalScope())
+                                        if (!String.IsNullOrWhiteSpace(p.Title))
                                         {
-                                            GUILayout.Space(40);
-                                            GUILayout.TextArea(p.Title, Settings.Instance.textAreaFont);
+                                            using (new GUILayout.HorizontalScope())
+                                            {
+                                                GUILayout.Space(40);
+                                                GUILayout.TextArea(p.Title, Settings.Instance.textAreaFont);
+                                            }
                                         }
                                     }
                                     if (Settings.Instance.showNotes)
@@ -518,10 +521,13 @@ namespace SimpleContractDisplay
 
         }
 
+        static float lastAlpha = -1;
         internal static void SetAlpha(float Alpha)
         {
             GUIStyle workingWindow;
-
+            if (Alpha == lastAlpha)
+                return;
+            lastAlpha = Alpha;
             if (Settings.Instance.kspWindow.active.background == null)
             {
                 Log.Info("SetAlpha, Settings.Instance.kspWindow.active.background is null");
