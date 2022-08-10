@@ -37,6 +37,9 @@
 	Fixed constant setting of Alpha, not needed unless changed
 	Added String.IsNullOrWhiteSpace for the p.title, to eliminate white space
 
+0.0.1.2
+	Added saving of Guid of manual contracts.  This fixes an issue where the save file would get totally cluttered with redundent copies of a manual contract
+
 TODO
 	Need to look at text file storage
 	Add tooltips for the buttons on top
