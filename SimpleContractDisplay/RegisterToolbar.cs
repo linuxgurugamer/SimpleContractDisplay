@@ -29,7 +29,6 @@ namespace SimpleContractDisplay
             ToolbarControl.RegisterMod(Display.MODID, Display.MODNAME);
             Settings.Instance.kspWindow = new GUIStyle(HighLogic.Skin.window);
             Settings.Instance.kspWindow.active.background = GUISkinCopy.CopyTexture2D(HighLogic.Skin.window.active.background);
-            Settings.Instance.rootPath = KSPUtil.ApplicationRootPath;
 
             Settings.Instance.LoadData();
         }

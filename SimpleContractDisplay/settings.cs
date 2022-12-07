@@ -6,7 +6,7 @@ using UnityEngine;
 using SpaceTuxUtility;
 using static SimpleContractDisplay.RegisterToolbar;
 
-using ContractParser;
+//using ContractParser;
 
 namespace SimpleContractDisplay
 {
@@ -24,8 +24,6 @@ namespace SimpleContractDisplay
         internal Texture2D styleOn;
         internal GUIStyle resizeButton;
         internal GUIStyle scrollViewStyle;
-
-        internal string rootPath;
 
         internal GUIStyle textFieldStyleRed;
         internal GUIStyle textFieldStyleNormal;
@@ -53,7 +51,7 @@ namespace SimpleContractDisplay
 
         internal Dictionary<Guid, Contract> activeContracts;
 
-        internal static readonly string CFG_PATH = "/GameData/SimpleContractDisplay/PluginData/";
+        internal static string CFG_PATH { get { return KSPUtil.ApplicationRootPath + "GameData/SimpleContractDisplay/PluginData/"; } }
         static readonly string CFG_FILE = CFG_PATH + "displayInfo.cfg";
 
         internal static readonly string DISPLAYINFO_NODENAME = "DISPLAYINFO";
@@ -78,7 +76,6 @@ namespace SimpleContractDisplay
         }
         public void SaveData()
         {
-            string fullPath = rootPath + CFG_FILE;
             var configFile = new ConfigNode();
             var configFileNode = new ConfigNode(DISPLAYINFO_NODENAME);
             configFileNode.AddValue("fontSize", fontSize);
@@ -125,17 +122,16 @@ namespace SimpleContractDisplay
             configFile.AddNode(configFileNode);
 
 
-            configFile.Save(fullPath);
+            configFile.Save(CFG_FILE);
         }
 
         public void LoadData()
         {
-            string fullPath = rootPath + CFG_FILE;
-            Log.Info("LoadData, fullpath: " + fullPath);
-            if (File.Exists(fullPath))
+            Log.Info("LoadData, fullpath: " + CFG_FILE);
+            if (File.Exists(CFG_FILE))
             {
                 Log.Info("file exists");
-                var configFile = ConfigNode.Load(fullPath);
+                var configFile = ConfigNode.Load(CFG_FILE);
                 if (configFile != null)
                 {
                     Log.Info("configFile loaded");

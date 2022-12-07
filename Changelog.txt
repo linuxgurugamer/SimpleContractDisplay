@@ -38,7 +38,10 @@
 	Added String.IsNullOrWhiteSpace for the p.title, to eliminate white space
 
 0.0.1.2
-	Added saving of Guid of manual contracts.  This fixes an issue where the save file would get totally cluttered with redundent copies of a manual contract
+	Added saving of Guid of manual contracts.  This fixes an issue where the save file would get totally cluttered with redundant copies of a manual contract
+
+0.0.1.3
+	Some minor code cleanup
 
 TODO
 	Need to look at text file storage
