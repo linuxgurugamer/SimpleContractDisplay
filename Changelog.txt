@@ -43,6 +43,10 @@
 0.0.1.3
 	Some minor code cleanup
 
+0.0.1.4 
+	Fixed issue where blank lines were being displayed due to an incorrect pointer
+	Fixed Alpha transparency not being set correctly upon startup
+
 TODO
 	Need to look at text file storage
 	Add tooltips for the buttons on top

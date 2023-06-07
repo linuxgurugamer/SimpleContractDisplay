@@ -13,6 +13,10 @@ using ContractParser;
 
 
 using static SimpleContractDisplay.RegisterToolbar;
+using Contracts;
+using FinePrint.Contracts.Parameters;
+using KSP.Localization;
+using System.Reflection;
 
 // Transparency for unity skin ???
 
@@ -216,7 +220,65 @@ namespace SimpleContractDisplay
             }
         }
 
+#if false
+        private List<string> getPartTitles(List<string> names)
+        {
+            List<string> list = new List<string>();
+            for (int num = names.Count - 1; num >= 0; num--)
+            {
+                string text = names[num];
+                if (!string.IsNullOrEmpty(text))
+                {
+                    AvailablePart partInfoByName = PartLoader.getPartInfoByName(text.Replace('_', '.'));
+                    if (partInfoByName != null && ResearchAndDevelopment.PartModelPurchased(partInfoByName))
+                    {
+                        list.Add(partInfoByName.title);
+                    }
+                }
+            }
 
+            return list;
+        }
+        private List<string> getPartTitlesFromModules(List<string> names)
+        {
+            List<string> list = new List<string>();
+            for (int i = 0; i < names.Count; i++)
+            {
+                string text = names[i];
+                if (string.IsNullOrEmpty(text))
+                {
+                    continue;
+                }
+
+                for (int num = PartLoader.LoadedPartsList.Count - 1; num >= 0; num--)
+                {
+                    AvailablePart availablePart = PartLoader.LoadedPartsList[num];
+                    if (availablePart != null && ResearchAndDevelopment.PartModelPurchased(availablePart) && !(availablePart.partPrefab == null))
+                    {
+                        try
+                        {
+                            int hashCode = text.GetHashCode();
+                            for (int num2 = availablePart.partPrefab.Modules.Count - 1; num2 >= 0; num2--)
+                            {
+                                PartModule partModule = availablePart.partPrefab.Modules[num2];
+                                if (!(partModule == null) && partModule.ModuleAttributes != null && partModule.ClassID == hashCode)
+                                {
+                                    list.Add(availablePart.title);
+                                    break;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogError("[Contract Parser] Custom Notes: Error Parsing Part: [" + availablePart.name + "] For Module: [" + text + "]\n" + ex.ToString());
+                        }
+                    }
+                }
+            }
+
+            return list;
+        }
+#endif
         void RecurseParameterContainer(float indent, parameterContainer p)
         {
             for (int i2 = 0; i2 < p.ParamList.Count; i2++)
@@ -228,15 +290,95 @@ namespace SimpleContractDisplay
                         GUILayout.Space(indent);
                         GUILayout.TextArea("<color=#acfcff>" + p1.Title + "</color>", Settings.Instance.textAreaSmallFont);
                     }
-                if (!String.IsNullOrWhiteSpace(p.CParam.Notes))
+                if (!String.IsNullOrWhiteSpace(p1.CParam.Notes) )
                     using (new GUILayout.HorizontalScope())
                     {
                         GUILayout.Space(indent);
                         GUILayout.TextArea("<color=#acfcff>" + p1.CParam.Notes + "</color>", Settings.Instance.textAreaSmallFont);
                     }
+                using (new GUILayout.HorizontalScope())
+                {
+                    GUILayout.Space(indent);
+                    GUILayout.TextArea("<color=#acfcff>" + "Parm count: " + p1.CParam.AllParameters.Count() + "</color>", Settings.Instance.textAreaSmallFont);
+                }
+#if false
+                ContractConfigurator.Parameters.PartValidation
+
+                foreach (ContractParameter parm in p1.CParam.AllParameters)
+                {
+                    if (p.CParamType == typeof(PartRequestParameter))
+                    {
+                        var cParamType = p.CParamType;
+                        List<string> list = new List<string>();
+                        FieldInfo[] fields = cParamType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
+                        if (fields != null)
+                        {
+
+                            try
+                            {
+                                list = (List<string>)fields[4].GetValue((PartRequestParameter)parm);
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error("Custom Notes: Error Detecting Acceptable Parts Name...\n" + ex);
+                            }
+                        }
+                        if (list != null && list.Count > 0)
+                        {
+                            List<string> partTitles = getPartTitles(list);
+                            if (partTitles.Count > 0)
+                            {
+                                using (new GUILayout.HorizontalScope())
+                                {
+                                    GUILayout.Space(indent + indent);
+                                    GUILayout.TextArea("<color=#acfcff>" + Localizer.Format("#autoLOC_ContractParser_PartRequest") + "</color>", Settings.Instance.textAreaSmallFont);
+
+                                    for (int num = partTitles.Count - 1; num >= 0; num--)
+                                    {
+                                        string value = partTitles[num];
+                                        GUILayout.Space(indent + indent);
+                                        GUILayout.TextArea("<color=#acfcff>" + value + "</color>", Settings.Instance.textAreaSmallFont);
+                                    }
+                                }
+                            }
+                        }
+#if true
+                        try
+                        {
+                            list = (List<string>)fields[5].GetValue((PartRequestParameter)parm);
+                        }
+                        catch (Exception ex2)
+                        {
+                            Log.Error("Custom Notes: Error Detecting Acceptable Part Modules Name...\n" + ex2);
+                        }
+
+                        if (list != null && list.Count > 0)
+                        {
+                            List<string> partTitlesFromModules = getPartTitlesFromModules(list);
+                            if (partTitlesFromModules.Count > 0)
+                            {
+                                GUILayout.Space(indent + indent);
+                                GUILayout.TextArea("<color=#acfcff>" + Localizer.Format("#autoLOC_ContractParser_PartRequest") + "</color>", Settings.Instance.textAreaSmallFont);
+
+                                for (int num2 = partTitlesFromModules.Count - 1; num2 >= 0; num2--)
+                                {
+                                    string value2 = partTitlesFromModules[num2];
+                                    GUILayout.Space(indent + indent);
+                                    GUILayout.TextArea("<color=#acfcff>" + value2 + "</color>", Settings.Instance.textAreaSmallFont);
+
+                                }
+                            }
+                        }
+#endif
+                    }
+                    else
+                        Log.Info(" p.CParamType != typeof(PartRequestParameter): " + p.CParamType.ToString());
+                }
+
 
                 for (int i3 = 0; i3 < p.ParamList.Count; i3++)
                     RecurseParameterContainer(indent + 10, p.ParamList[i3]);
+#endif
             }
         }
 

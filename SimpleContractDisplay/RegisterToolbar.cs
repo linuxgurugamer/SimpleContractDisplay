@@ -14,9 +14,9 @@ namespace SimpleContractDisplay
         {
             if (Log == null)
 #if DEBUG
-                Log = new Log("DisplayCurrentContract", Log.LEVEL.INFO);
+                Log = new Log("SimpleContractDisplay", Log.LEVEL.INFO);
 #else
-                Log = new Log("DisplayCurrentContract", Log.LEVEL.ERROR);
+                Log = new Log("SimpleContractDisplay", Log.LEVEL.ERROR);
 #endif
 
             DontDestroyOnLoad(this);
@@ -71,7 +71,7 @@ namespace SimpleContractDisplay
                 Settings.Instance.scrollViewStyle = new GUIStyle(HighLogic.Skin.scrollView);
 
                 Display.SetFontSizes(Settings.Instance.fontSize, Settings.Instance.bold);
-                Display.SetAlpha(Settings.Instance.Alpha);
+                //Display.SetAlpha(Settings.Instance.Alpha);
             }
         }
 
