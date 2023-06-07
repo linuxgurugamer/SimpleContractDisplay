@@ -41,9 +41,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>$(KSPDIR)\GameData\000_ClickThroughBlocker\Plugins\ClickThroughBlocker.dll</HintPath>
     </Reference>
-    <Reference Include="ContractConfigurator">
-      <HintPath>R:\KSP_1.12.5-dev\GameData\ContractConfigurator\ContractConfigurator.dll</HintPath>
-    </Reference>
     <Reference Include="ContractParser">
       <HintPath>$(KSPDIR)\GameData\DMagicUtilities\ContractParser\ContractParser.dll</HintPath>
     </Reference>
